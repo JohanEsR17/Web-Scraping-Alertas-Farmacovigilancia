@@ -1,0 +1,41 @@
+name: Ejecutar Scraper
+
+on:
+  schedule:
+    - cron: '*/15 11-23,0-4 * * *' # Ejecuta cada 15 minutos
+  workflow_dispatch:
+
+permissions:
+  contents: write # Permite guardar en el csv
+
+jobs:
+  run-scraper:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout código
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+      
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+      
+      - name: Ejecutar scraper (main.py)
+        env: 
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: |
+          python main.py
+      
+      - name: Guardar cambios en csv (commit & push)
+        run: |
+          git config --global user.name "Github Action Scraper"
+          git config --global user.email "action@github.com"
+          git add noticias_historial.csv
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Actualización automática de noticias" && git push)
+
