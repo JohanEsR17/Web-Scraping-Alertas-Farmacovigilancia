@@ -7,7 +7,7 @@ import os
 st.set_page_config(page_title="Dashboard Alertas Sanitarias", layout="wide")
 
 # 1. CARGA DE DATOS
-@st.cache_data
+@st.cache_data(ttl=120)
 def load_data(filepath):
     file_path = "noticias_historial.csv"
     
