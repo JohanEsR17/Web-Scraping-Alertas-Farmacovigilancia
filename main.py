@@ -50,7 +50,7 @@ def enviar_telegram(mensaje):
 
     print("Enviando mensaje...")
     url_bot = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
-    data = {"chat_id": TELEGRAM_CHAT_ID, "text": mensaje, "parse_mode": "HTML"}
+    data = {"chat_id": TELEGRAM_CHAT_ID, "text": mensaje, "parse_mode": "HTML", "disable_web_page_preview": True}
     try:
         requests.post(url_bot, data=data)
         print(f"  > Enviado a {TELEGRAM_CHAT_ID}")
