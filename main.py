@@ -13,7 +13,7 @@ load_dotenv()
 ARCHIVO_HISTORIAL = "noticias_historial.csv"
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
-SILENT_MODE = True # [IMPORTANTE] Si es True, guarda en CSV pero NO envía a Telegram
+SILENT_MODE = False # [IMPORTANTE] Si es True, guarda en CSV pero NO envía a Telegram
 
 if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
     print("Error: Variables de entorno no configuradas")
