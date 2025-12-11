@@ -104,13 +104,38 @@ def ejecutar_flujo():
     if not df_novedades.empty:
         # 4. Enviar alertas
         for index, noticia in df_novedades.iterrows():
+            print(f"Enviando alerta para {noticia['pais']} - {noticia['titulo']}")
+
+            # Evitar error de caracteres especiales
+            titulo_seguro = html.escape(str(noticia['titulo']))
+            institucion_segura = html.escape(str(noticia['institucion']))
+            
+            # Logica inteligente de enlaces
+            link_web = noticia.get('url')
+            link_pdf = noticia.get('pdf')
+
+            texto_enlaces = ""
+
+            # Caso A: (Web + PDF)
+            if link_web and link_pdf and link_web != link_pdf:
+                texto_enlaces = (
+                                f"🔗 <a href='{link_web}'>Ver en Web</a> | "
+                                f"📥 <a href='{link_pdf}'>Descargar PDF</a>"
+                            )
+
+            # Caso B: Solo uno de los dos
+            elif link_pdf:
+                texto_enlaces = f"📥 <a href='{link_pdf}'>Descargar Documento Oficial</a>"
+            elif link_web:
+                texto_enlaces = f"🔗 <a href='{link_web}'>Fuente Oficial</a>"
+
             bandera = obtener_bandera(noticia['pais'])
             mensaje = (
                 f"{bandera} <b>NUEVA ALERTA - {noticia['pais']}</b>\n"
                 f"🏛 <b>Institución:</b> {noticia['institucion']}\n"
                 f"📅 <b>Fecha:</b> {noticia['fecha']}\n\n"
-                f"📄 <b>{noticia['titulo']}</b>\n\n"
-                f"🔗 <a href='{noticia['url']}'>Leer documento oficial</a>"
+                f"⚠️ <b>{noticia['titulo']}</b>\n\n"
+                f"{texto_enlaces}"
             )
             enviar_telegram(mensaje)
         
