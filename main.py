@@ -3,7 +3,7 @@ import sys
 from dotenv import load_dotenv
 import pandas as pd
 import requests
-from scraper import scrape_peru, scrape_chile, scrape_brasil, scrape_colombia, scrape_mexico
+from scraper import scrape_peru, scrape_chile, scrape_brasil, scrape_colombia, scrape_mexico, scrape_argentina, scrape_bolivia, scrape_costarica
 import concurrent.futures
 
 # Cargar variables de entorno
@@ -13,7 +13,7 @@ load_dotenv()
 ARCHIVO_HISTORIAL = "noticias_historial.csv"
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
-SILENT_MODE = False # [IMPORTANTE] Si es True, guarda en CSV pero NO envía a Telegram
+SILENT_MODE = True # [IMPORTANTE] Si es True, guarda en CSV pero NO envía a Telegram
 
 if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
     print("Error: Variables de entorno no configuradas")
@@ -24,7 +24,10 @@ LISTA_DE_SCRAPERS = [
     scrape_chile,
     scrape_brasil,
     scrape_colombia,
-    scrape_mexico
+    scrape_mexico,
+    scrape_argentina,
+    scrape_bolivia,
+    scrape_costarica
 ]
 
 def obtener_bandera(pais):
@@ -33,7 +36,10 @@ def obtener_bandera(pais):
         'Chile': '🇨🇱',
         'Brasil': '🇧🇷',
         'Colombia': '🇨🇴',
-        'México': '🇲🇽'
+        'México': '🇲🇽',
+        'Argentina': '🇦🇷',
+        'Bolivia': '🇧🇴',
+        'Costa Rica': '🇨🇷'
     }
     return banderas.get(pais, '🌎')
 

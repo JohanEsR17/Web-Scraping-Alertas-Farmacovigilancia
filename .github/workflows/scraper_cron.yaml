@@ -2,11 +2,11 @@ name: Ejecutar Scraper
 
 on:
   schedule:
-    - cron: '*/15 11-23,0-4 * * *' # Ejecuta cada 15 minutos
+    - cron: '*/15 11-23,0-4 * * *' 
   workflow_dispatch:
 
 permissions:
-  contents: write # Permite guardar en el csv
+  contents: write
 
 jobs:
   run-scraper:
