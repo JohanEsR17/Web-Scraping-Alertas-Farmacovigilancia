@@ -481,8 +481,7 @@ def scrape_costarica():
                     'fecha': fecha_norm,
                     'url': link_pdf,
                     'pais': 'Costa Rica',
-                    'institucion': 'MinSalud',
-                    'categoria': categoria
+                    'institucion': 'MinSalud'
                 })
             
             time.sleep(1)
