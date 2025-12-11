@@ -9,43 +9,87 @@ from urllib.parse import urljoin
 '''
 fuentes: https://bvcenadim.digemid.minsa.gob.pe/index.php/enlaces/agencias-reguladoras-en-el-mundo
 '''
-
-def scrape_peru():
-    """Extrae la ultima noticia del Digemid"""
-    print("  -> Scrapeando PERÚ - DIGEMID...")
-    url_peru = "https://www.digemid.minsa.gob.pe/webDigemid/publicaciones/alertas-modificaciones/feed/"
-
-    response = requests.get(
-        url_peru,
-        timeout=30,
-        impersonate="chrome110",
-        verify=False
-    )
-    response.raise_for_status()
-
+##### PERÚ :)
+def detalle_alerta_peru(url_noticia):
     try:
-        feed = feedparser.parse(response.content)
-        noticias_peru = []
-
-        for entry in feed.entries:
-            fecha_str = "Sin Fecha"
-            if hasattr(entry, 'published_parsed') and entry.published_parsed:
-                fecha_struct = entry.published_parsed
-                fecha_str = time.strftime("%d-%m-%Y %H:%M:%S", fecha_struct)
-            noticias_peru.append({
-                'url': entry.link,
-                'titulo': entry.title,
-                'fecha': fecha_str,
-                'pais': 'Perú',
-                'institucion': 'DIGEMID'
-            })
+        response = requests.get(
+            url_noticia, 
+            impersonate="chrome110", 
+            timeout=10, 
+            verify=False
+        )
         
-        return noticias_peru
+        if response.status_code != 200:
+            return {"motivo": "Error de acceso", "pdf": None}
+
+        soup = BeautifulSoup(response.content, "html.parser")
+        
+        # Extraer Motivo 
+        tag_motivo = soup.select_one("div.entry-content h3")
+        motivo = tag_motivo.get_text(strip=True) if tag_motivo else "Sin detalle en H3"
+
+        # Extraer producto afectado
+        tag_producto = soup.select_one("div.entry-content ul")
+        producto = tag_producto.get_text(strip=True) if tag_producto else None
+        
+        # Extraer PDF
+        tag_pdf = soup.select_one('[href$=".pdf"], [src$=".pdf"]')
+        
+        if tag_pdf:
+            # Determina si el atributo es href o src
+            attr = "href" if tag_pdf.has_attr("href") else "src"
+            link_pdf = urljoin(url_noticia, tag_pdf[attr])
+        else:
+            print("No se encontró enlace PDF")
+            
+        return motivo, link_pdf, producto
 
     except Exception as e:
-        print(f"  -> [ERROR] Falló el scraping de DIGEMID: {e}")
-        return []
+        print(f"[!] Error scrapeando detalle {url_noticia}: {e}")
+        return {"motivo": "Error", "pdf": None}
 
+def scrape_peru():
+    url_peru = "https://www.digemid.minsa.gob.pe/webDigemid/publicaciones/alertas-modificaciones/feed/?paged="
+    noticias_peru = []
+    for i in range(1,2):
+        url_pagina = url_peru + str(i)
+        try:
+            feed = feedparser.parse(url_pagina)
+
+            for entry in feed.entries:
+                titulo = entry.title
+                link = entry.link
+
+                fecha_str = "Sin Fecha"
+                if hasattr(entry, 'published_parsed') and entry.published_parsed:
+                    fecha_struct = entry.published_parsed
+                    fecha_str = time.strftime("%d-%m-%Y %H:%M:%S", fecha_struct)
+
+                motivo, pdf, producto = detalle_alerta_peru(link)
+                if motivo and producto != None:
+                    titulo_completo = f"{titulo} - {motivo}. Productos: {producto}"
+                elif motivo:
+                    titulo_completo = f"{titulo} - {motivo}"
+
+                link_pdf = pdf
+
+                noticias_peru.append({
+                    'url': link,
+                    'pdf': link_pdf,
+                    'titulo': titulo_completo,
+                    'fecha': fecha_str,
+                    'pais': 'Perú',
+                    'institucion': 'DIGEMID'
+                })
+
+                time.sleep(0.5)
+
+        except Exception as e:
+            print(f"  -> [ERROR] Falló el scraping de DIGEMID: {e}")
+            return []
+    return noticias_peru
+
+##### CHILE :/
 def scrape_chile():
     ''' Extrae las ultimas alertas del Instituto de Salud Pública de Chile'''
     print("  -> Scrapeando CHILE - ISPCH...")
@@ -87,6 +131,7 @@ def scrape_chile():
 
     return noticias_chile
 
+##### BRASIL :/
 def scrape_brasil():
     print("  -> Scrapeando BRASIL - ANVISA...")
     url_brasil = "https://antigo.anvisa.gov.br/alertas"
@@ -138,7 +183,8 @@ def scrape_brasil():
     except Exception as e:
         print(f"[!] Error fatal en ANVISA: {e}")
         return []
-       
+
+##### COLOMBIA :)
 def scrape_colombia():
     ''' Extrae TODAS las alertas de la primera página del INVIMA de Colombia '''
     print("  -> Scrapeando COLOMBIA - INVIMA...")
@@ -177,6 +223,7 @@ def scrape_colombia():
         print(f"[!] Error fatal en scraping de COLOMBIA - INVIMA: {e}")
         return []
 
+##### MÉXICO :/
 def scrape_mexico():
     ''' Extrae las primeras 10 alertas de CADA CATEGORÍA de COFEPRIS y las consolida. '''
     print("  -> Scrapeando MÉXICO - COFEPRIS...")
@@ -250,6 +297,7 @@ def scrape_mexico():
         print(f"[!] Error fatal en el scraping de MÉXICO - COFEPRIS: {e}")
         return []
 
+##### ARGENTINA :)
 def scrape_argentina():
     print("  -> Scrapeando ARGENTINA - ANMAT...")
     
@@ -319,6 +367,7 @@ def scrape_argentina():
 
     return noticias_argentina
 
+##### BOLIVIA :/
 def scrape_bolivia():
     print(" -> Scrapeando BOLIVIA - AGEMED...")
     
@@ -402,6 +451,7 @@ def scrape_bolivia():
 
 ## Página de mrd la de venezuela, no hay nada en su huevada
 
+##### COSTA RICA :)
 def scrape_costarica():
     """
     Scrapea alertas de Costa Rica

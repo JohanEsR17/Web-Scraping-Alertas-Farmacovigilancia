@@ -1,13 +1,14 @@
 import os
 import sys
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 import pandas as pd
 import requests
 from scraper import scrape_peru, scrape_chile, scrape_brasil, scrape_colombia, scrape_mexico, scrape_argentina, scrape_bolivia, scrape_costarica
 import concurrent.futures
+import html
 
 # Cargar variables de entorno
-load_dotenv()
+load_dotenv(find_dotenv(), override=True)
 
 # Configuración Global
 ARCHIVO_HISTORIAL = "noticias_historial.csv"
@@ -51,6 +52,10 @@ def enviar_telegram(mensaje):
     print("Enviando mensaje...")
     url_bot = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
     data = {"chat_id": TELEGRAM_CHAT_ID, "text": mensaje, "parse_mode": "HTML", "disable_web_page_preview": True}
+    print(f"--- DIAGNÓSTICO ---")
+    print(f"👀 El código ve este ID: '{TELEGRAM_CHAT_ID}'")
+    print(f"❓ Tipo de dato: {type(TELEGRAM_CHAT_ID)}")
+    print(f"--- FIN DIAGNÓSTICO ---")
     try:
         requests.post(url_bot, data=data)
         print(f"  > Enviado a {TELEGRAM_CHAT_ID}")
