@@ -179,6 +179,7 @@ def scrape_brasil():
                     'pais': 'Brasil',
                     'institucion': 'ANVISA'
                 })
+        return noticias_brasil
 
     except Exception as e:
         print(f"[!] Error fatal en ANVISA: {e}")
@@ -218,6 +219,7 @@ def scrape_colombia():
                     'pais': 'Colombia',
                     'institucion': 'INVIMA'
                 })
+        return noticias_colombia
 
     except Exception as e:
         print(f"[!] Error fatal en scraping de COLOMBIA - INVIMA: {e}")
@@ -292,6 +294,8 @@ def scrape_mexico():
                         'pais': 'México',
                         'institucion': 'COFEPRIS'
                     })
+
+        return noticias_mexico
 
     except Exception as e:
         print(f"[!] Error fatal en el scraping de MÉXICO - COFEPRIS: {e}")
