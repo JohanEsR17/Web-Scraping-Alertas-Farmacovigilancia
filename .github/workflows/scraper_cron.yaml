@@ -2,7 +2,7 @@ name: Ejecutar Scraper
 
 on:
   schedule:
-    - cron: '*/15 11-23,0-4 * * *' 
+    - cron: '*/15 11-23,0-4 * * 1-5' 
   workflow_dispatch:
 
 permissions:
