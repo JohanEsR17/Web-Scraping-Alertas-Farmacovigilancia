@@ -1,5 +1,6 @@
 import os
 import sys
+import time  # Import time for delays
 from dotenv import load_dotenv, find_dotenv
 import pandas as pd
 import requests
@@ -65,6 +66,15 @@ def ejecutar_flujo():
     try:
         df_historico = pd.read_csv(ARCHIVO_HISTORIAL)
         print(f"Historial cargado: {len(df_historico)} registros")
+        
+        # Normalizar historial si faltan columnas (migración al vuelo)
+        if 'resumen' not in df_historico.columns:
+             print("Agregando columna 'resumen' al historial existente en memoria...")
+             df_historico['resumen'] = ""
+        if 'pais' not in df_historico.columns:
+             print("Agregando columna 'pais' al historial existente en memoria...")
+             df_historico['pais'] = "Desconocido"
+
     except FileNotFoundError:
         df_historico = pd.DataFrame(columns=["url", "titulo", "fecha", "pais", "institucion", "resumen"])
         print("Historial no encontrado, creando nuevo archivo...")
@@ -94,13 +104,13 @@ def ejecutar_flujo():
     df_candidatos = pd.DataFrame(noticias_candidatas)
 
     # 3. Detección de cambios
-    # Si el historial tiene columnas viejas (sin pais/institucion/resumen), forzamos actualización
-    if 'pais' not in df_historico.columns or 'resumen' not in df_historico.columns:
-        print("Detectado formato antiguo de historial. Se actualizará todo.")
-        df_novedades = df_candidatos
-    else:
-        url_historicas = df_historico['url']
-        df_novedades = df_candidatos[~df_candidatos['url'].isin(url_historicas)]
+    
+    # Normalizamos df_candidatos para que tenga las mismas columnas si hace falta
+    if 'resumen' not in df_candidatos.columns:
+        df_candidatos['resumen'] = df_candidatos['titulo'] # Valor temporal
+        
+    url_historicas = df_historico['url']
+    df_novedades = df_candidatos[~df_candidatos['url'].isin(url_historicas)]
 
     print(f"Se encontraron {len(df_novedades)} novedades")
 
@@ -163,6 +173,10 @@ def ejecutar_flujo():
                 f"{texto_enlaces}"
             )
             enviar_telegram(mensaje)
+            
+            # [PAUSA] Esperar 20 segundos para evitar Rate Limit de Gemini
+            print("  ⏳ Esperando 20 segundos para no saturar la API...")
+            time.sleep(20)
         
         # 5. Actualizar el historial
         # Convertir novedades con resumen a DataFrame
