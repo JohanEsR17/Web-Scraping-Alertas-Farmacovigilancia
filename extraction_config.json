@@ -1,0 +1,53 @@
+{
+  "Argentina": {
+    "content_type": "html",
+    "selectors": [
+      ".title-description h1",
+      ".news__lead p",
+      "time",
+      ".col-md-12 div p",
+      ".col-md-12 div ul li"
+    ],
+    "remove_selectors": [
+      "script",
+      ".news__social-share",
+      ".sr-only",
+      "footer"
+    ]
+  },
+  "Brasil": {
+    "content_type": "html",
+    "container": "div.bodyModel",
+    "selectors": [
+      "div h4",
+      "div p"
+    ],
+    "remove_selectors": [
+      "script",
+      "style",
+      "br",
+      "a"
+    ]
+  },
+  "Bolivia": {
+    "content_type": "pdf",
+    "note": "Most PDFs are images, text extraction may fail"
+  },
+  "Chile": {
+    "content_type": "pdf",
+    "note": "HTML redirects to PDF"
+  },
+  "Colombia": {
+    "content_type": "pdf"
+  },
+  "Costa Rica": {
+    "content_type": "pdf"
+  },
+  "México": {
+    "content_type": "pdf"
+  },
+  "Perú": {
+    "content_type": "pdf",
+    "note": "Use PDF link from scraper, not HTML"
+  }
+}
