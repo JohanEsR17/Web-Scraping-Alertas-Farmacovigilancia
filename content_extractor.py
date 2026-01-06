@@ -5,6 +5,7 @@ import fitz  # PyMuPDF
 import requests
 from curl_cffi import requests as curl_requests
 import tempfile
+import re
 
 # Cargar configuración
 CONFIG_PATH = os.path.join(os.path.dirname(__file__), 'extraction_config.json')
