@@ -121,7 +121,7 @@ def scrape_chile():
 
                 # Arreglo al redireccionamiento de Chile
                 html_url = requests.get(entry.link).text
-                url_pdf = re.findall(r"https://www\.ispch\.gob\.cl/wp-content/uploads/(?![^\"']*CODIGO-ETICA)[^\"']+\.pdf", html)[0]
+                url_pdf = re.findall(r"https://www\.ispch\.gob\.cl/wp-content/uploads/(?![^\"']*CODIGO-ETICA)[^\"']+\.pdf", html_url)[0]
                 
                 # Devuelvo
                 noticias_chile.append({
