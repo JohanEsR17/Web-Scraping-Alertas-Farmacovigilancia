@@ -114,11 +114,18 @@ def scrape_chile():
             feed = feedparser.parse(response.content)
             for entry in feed.entries:
                 fecha_str = "Sin Fecha"
+
                 if hasattr(entry, 'published_parsed') and entry.published_parsed:
                     fecha_struct = entry.published_parsed
                     fecha_str = time.strftime("%d-%m-%Y %H:%M:%S", fecha_struct)
+
+                # Arreglo al redireccionamiento de Chile
+                html_url = requests.get(entry.link).text
+                url_pdf = re.findall(r"https://www\.ispch\.gob\.cl/wp-content/uploads/(?![^\"']*CODIGO-ETICA)[^\"']+\.pdf", html)[0]
+                
+                # Devuelvo
                 noticias_chile.append({
-                    'url': entry.link,
+                    'url': url_pdf,
                     'titulo': entry.title,
                     'fecha': fecha_str,
                     'pais': 'Chile',
@@ -210,7 +217,16 @@ def scrape_colombia():
 
             if titulo_tag and fecha_tag and link_tag and link_tag.get('href'):
                 fecha_bruto = fecha_tag.text.strip()
-                fecha_normalizada = datetime.strptime(fecha_bruto, '%Y-%m-%d').strftime('%d-%m-%Y')
+
+                # Preparo posibles variaciones en el formato de fecha:
+                formatos_fecha = ['%Y-%m-%d', '%Y - %m - %d']
+                for formato in formatos_fecha:
+                    try:
+                        fecha_dt = datetime.strptime(fecha_bruto, formato)
+                        fecha_normalizada = fecha_dt.strftime('%d-%m-%Y')
+                        break
+                    except ValueError:
+                        fecha_normalizada = datetime.now().strftime('%d-%m-%Y')
 
                 noticias_colombia.append({
                     'url': link_tag.get('href'),
@@ -219,13 +235,14 @@ def scrape_colombia():
                     'pais': 'Colombia',
                     'institucion': 'INVIMA'
                 })
+
         return noticias_colombia
 
     except Exception as e:
         print(f"[!] Error fatal en scraping de COLOMBIA - INVIMA: {e}")
         return []
 
-##### MÉXICO :/
+##### MÉXICO :/ (Problemas al extraer el html de su página, pide confirmación javascript, lo que complica mucho el scraping)
 def scrape_mexico():
     ''' Extrae las primeras 10 alertas de CADA CATEGORÍA de COFEPRIS y las consolida. '''
     print("  -> Scrapeando MÉXICO - COFEPRIS...")

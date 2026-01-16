@@ -148,12 +148,6 @@ def extract_content(noticia):
     if content_type == 'html':
         # Países con HTML: Argentina, Brasil
         url = noticia.get('url')
-
-        if pais == 'Chile':
-            html_url = requests.get(url)
-            url_pdf = re.findall(r"https://www\.ispch\.gob\.cl/wp-content/uploads/(?![^\"']*CODIGO-ETICA)[^\"']+\.pdf", html)[0]
-            return extract_text_from_pdf(url_pdf)
-
         return extract_text_from_html(url, pais)
     
     elif content_type == 'pdf':
