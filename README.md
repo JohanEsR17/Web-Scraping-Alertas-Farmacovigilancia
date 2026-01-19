@@ -8,13 +8,19 @@
 </p>
 
 <p align="center">
-  <strong>Sistema automatizado de web scraping para la recolección y notificación en tiempo real de alertas sanitarias de agencias reguladoras de Latinoamérica.</strong>
+  <strong>
+    Sistema automatizado de web scraping para la recolección y notificación en tiempo real
+    de alertas sanitarias de agencias reguladoras de Latinoamérica.
+  </strong>
 </p>
 
 <p align="center">
   <img src="Images/chat-telegram.jpg" width="400">
 </p>
----
+
+<p align="center">
+  🔗 <strong><a href="https://t.me/+RZJkxkiG348zNDkx">Canal de Telegram con alertas en tiempo real</a></strong>
+</p>
 
 ## 📋 Descripción
 
