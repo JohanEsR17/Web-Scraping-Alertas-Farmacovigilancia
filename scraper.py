@@ -1,14 +1,250 @@
-import feedparser
+try:
+    import feedparser
+except ModuleNotFoundError:
+    feedparser = None
 from bs4 import BeautifulSoup
 import time
 from datetime import datetime
 import re
-from curl_cffi import requests
+try:
+    from curl_cffi import requests
+    _HAS_CURL_CFFI_REQUESTS = True
+except ModuleNotFoundError:
+    import requests
+    _HAS_CURL_CFFI_REQUESTS = False
 from urllib.parse import urljoin
 
 '''
 fuentes: https://bvcenadim.digemid.minsa.gob.pe/index.php/enlaces/agencias-reguladoras-en-el-mundo
 '''
+
+DRUGOFFICE_BASE_URL = "https://www.drugoffice.gov.hk"
+DRUGOFFICE_LIST_URL = (
+    "https://www.drugoffice.gov.hk/eps/news/listNews/en/healthcare_providers/8?search_year={year}"
+)
+DRUGOFFICE_SOURCE_ID = "drugoffice_other_safety_alerts"
+DRUGOFFICE_INSTITUTION = "Hong Kong Drug Office - Other safety alerts"
+DRUGOFFICE_PREFIX_TO_METADATA = {
+    "australia": ("Australia", "TGA"),
+    "singapore": ("Singapore", "HSA"),
+    "the united kingdom": ("United Kingdom", "MHRA"),
+    "the united states": ("United States", "FDA"),
+    "canada": ("Canada", "Health Canada"),
+    "european union": ("European Union", "EMA"),
+    "中國": ("China", "NMPA"),
+}
+
+
+def clean_text(value):
+    """Normaliza espacios en texto extraído desde HTML."""
+    if value is None:
+        return ""
+    return " ".join(str(value).split())
+
+
+def normalize_url(base_url, href):
+    """Convierte enlaces relativos del Drug Office a URLs absolutas."""
+    href = clean_text(href)
+    if not href or href.lower().startswith(("javascript:", "#")):
+        return None
+    return urljoin(base_url, href)
+
+
+def normalize_drugoffice_date(text):
+    """Normaliza fechas comunes del Drug Office a dd-mm-YYYY."""
+    raw = clean_text(text)
+    if not raw:
+        return None
+
+    raw = raw.replace("Sept", "Sep")
+    formatos = ["%d %b %Y", "%d %B %Y", "%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"]
+    for formato in formatos:
+        try:
+            return datetime.strptime(raw, formato).strftime("%d-%m-%Y")
+        except ValueError:
+            continue
+    return None
+
+
+def _is_primary_drugoffice_link(link):
+    """Determina si un enlace de aviso es primario y no relacionado."""
+    if not link:
+        return False
+
+    css_class = " ".join(link.get("class", []))
+    normalized_text = clean_text(link.get_text(" ")).lower()
+    href = clean_text(link.get("href", "")).lower()
+
+    if "related" in css_class.split():
+        return False
+    if "related" in normalized_text:
+        return False
+    if "related" in href:
+        return False
+
+    return True
+
+
+def infer_alert_jurisdiction(title_or_body):
+    """Backward-compatible helper used by legacy assertions and diagnostics."""
+    prefix, _ = parse_drugoffice_title_prefix(title_or_body)
+    mapped = map_drugoffice_prefix(prefix)
+    if mapped:
+        return mapped[0]
+
+    text = clean_text(title_or_body).lower()
+    if "fda" in text or "united states" in text or " usa" in text:
+        return "United States"
+    if "australia" in text or "tga" in text:
+        return "Australia"
+    if "singapore" in text or " hsa " in text:
+        return "Singapore"
+    if "united kingdom" in text or " mhra " in text:
+        return "United Kingdom"
+    if "canada" in text or "health canada" in text:
+        return "Canada"
+    if "european union" in text or " ema " in text:
+        return "European Union"
+    if "中國" in clean_text(title_or_body):
+        return "China"
+    return None
+
+
+def parse_drugoffice_title_prefix(title):
+    """Split title into jurisdiction prefix and remaining title text."""
+    cleaned = clean_text(title)
+    if not cleaned:
+        return None, ""
+
+    for separator in (":", "："):
+        if separator in cleaned:
+            prefix, remainder = cleaned.split(separator, 1)
+            return clean_text(prefix), clean_text(remainder)
+
+    return None, cleaned
+
+
+def map_drugoffice_prefix(prefix):
+    """Map recognized jurisdiction prefix to pais/institucion."""
+    if not prefix:
+        return None
+
+    return DRUGOFFICE_PREFIX_TO_METADATA.get(clean_text(prefix).lower())
+
+
+def is_drugoffice_media_prefix_excluded(prefix):
+    """Skip media-source rows that are not regulator rows for now."""
+    return clean_text(prefix) == "中國內地傳媒"
+
+
+def build_drugoffice_other_safety_alerts_url(year=None):
+    """Construye la URL del listado; por defecto usa el año calendario actual."""
+    selected_year = year or datetime.now().year
+    return DRUGOFFICE_LIST_URL.format(year=selected_year)
+
+
+def _get_drugoffice_list_html(url, fetcher):
+    """Request Drug Office list page using the available HTTP backend.
+
+    `curl_cffi` supports `impersonate`, while fallback `requests` does not.
+    When `requests` is in use, `impersonate` must be omitted to avoid
+    `TypeError: ... unexpected keyword argument 'impersonate'`.
+    """
+    if _HAS_CURL_CFFI_REQUESTS:
+        return fetcher(url, impersonate="chrome110", timeout=20, verify=False)
+
+    return fetcher(url, timeout=20, verify=False)
+
+
+def parse_drugoffice_other_safety_alerts_list(html, base_url=DRUGOFFICE_BASE_URL):
+    """Parsea el listado Other safety alerts sin emitir enlaces relacionados."""
+    soup = BeautifulSoup(html or "", "html.parser")
+    page_text = clean_text(soup.get_text(" "))
+    if "No News" in page_text:
+        return []
+
+    alerts = []
+    seen_urls = set()
+    for row in soup.select("tr"):
+        row_text = clean_text(row.get_text(" "))
+        if not row_text or "No News" in row_text:
+            continue
+
+        links = row.select("a.newsLink")
+        primary_link = None
+        for link in links:
+            if not _is_primary_drugoffice_link(link):
+                continue
+            if link.get("href"):
+                primary_link = link
+                break
+
+        if primary_link is None:
+            continue
+
+        url = normalize_url(base_url, primary_link.get("href"))
+        if not url or url in seen_urls:
+            continue
+
+        title = clean_text(primary_link.get_text(" "))
+        if not title:
+            continue
+
+        prefix, mapped_title = parse_drugoffice_title_prefix(title)
+        if is_drugoffice_media_prefix_excluded(prefix):
+            continue
+
+        mapped_metadata = map_drugoffice_prefix(prefix)
+        pais = mapped_metadata[0] if mapped_metadata else "Internacional"
+        institucion = mapped_metadata[1] if mapped_metadata else DRUGOFFICE_INSTITUTION
+
+        date_text = ""
+        parsed_date = None
+        for cell in row.find_all(["td", "th"]):
+            candidate = clean_text(cell.get_text(" "))
+            if re.search(r"\b(?:\d{1,2}[-/ ](?:\d{1,2}|[A-Za-z]{3,9})[-/ ]\d{4}|\d{4}-\d{1,2}-\d{1,2})\b", candidate):
+                parsed_date = normalize_drugoffice_date(candidate)
+                break
+
+        if not parsed_date:
+            continue
+
+        seen_urls.add(url)
+        is_pdf = url.lower().split("?", 1)[0].endswith(".pdf")
+        alerts.append({
+            "url": url,
+            "pdf": url if is_pdf else None,
+            "titulo": mapped_title or title,
+            "fecha": parsed_date,
+            "pais": pais,
+            "institucion": institucion,
+            "source_id": DRUGOFFICE_SOURCE_ID,
+            "publisher_country": "Hong Kong",
+            "alert_jurisdiction": infer_alert_jurisdiction(title),
+        })
+
+    return alerts
+
+
+def scrape_drugoffice_other_safety_alerts(year=None, fetcher=None):
+    """Extrae las alertas Other safety alerts del Hong Kong Drug Office."""
+    print("  -> Scrapeando DRUG OFFICE - Other safety alerts...")
+    url = build_drugoffice_other_safety_alerts_url(year)
+    fetch = fetcher or requests.get
+
+    try:
+        response = _get_drugoffice_list_html(url, fetch)
+        status_code = getattr(response, "status_code", 200)
+        if status_code != 200:
+            print(f"  -> [ERROR] Drug Office devolvió HTTP {status_code}")
+            return []
+
+        html = getattr(response, "content", response)
+        return parse_drugoffice_other_safety_alerts_list(html, DRUGOFFICE_BASE_URL)
+    except Exception as e:
+        print(f"  -> [ERROR] Falló el scraping de Drug Office Other safety alerts: {e}")
+        return []
+
 ##### PERÚ :)
 def detalle_alerta_peru(url_noticia):
     try:

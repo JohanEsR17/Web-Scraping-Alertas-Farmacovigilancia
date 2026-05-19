@@ -4,7 +4,7 @@ import time  # Import time for delays
 from dotenv import load_dotenv, find_dotenv
 import pandas as pd
 import requests
-from scraper import scrape_peru, scrape_chile, scrape_brasil, scrape_colombia, scrape_mexico, scrape_argentina, scrape_bolivia, scrape_costarica
+from scraper import scrape_peru, scrape_chile, scrape_brasil, scrape_colombia, scrape_mexico, scrape_argentina, scrape_bolivia, scrape_costarica, scrape_drugoffice_other_safety_alerts
 import concurrent.futures
 import html
 from content_extractor import extract_content
@@ -18,6 +18,7 @@ ARCHIVO_HISTORIAL = "noticias_historial.csv"
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN')
 TELEGRAM_CHAT_ID = os.environ.get('TELEGRAM_CHAT_ID')
 SILENT_MODE = False # [IMPORTANTE] Si es True, guarda en CSV pero NO envía a Telegram
+CSV_ROW_WARNING_THRESHOLD = 1200
 
 if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_ID:
     print("Error: Variables de entorno no configuradas")
@@ -31,8 +32,22 @@ LISTA_DE_SCRAPERS = [
     scrape_mexico,
     scrape_argentina,
     scrape_bolivia,
-    scrape_costarica
+    scrape_costarica,
+    scrape_drugoffice_other_safety_alerts
 ]
+
+def warn_csv_row_count(df, context):
+    row_count = len(df)
+    if row_count >= CSV_ROW_WARNING_THRESHOLD:
+        print(
+            f"[ADVERTENCIA] El historial CSV tiene {row_count} filas {context}. "
+            f"Umbral configurado: {CSV_ROW_WARNING_THRESHOLD}. La ejecución continúa."
+        )
+
+
+def select_preferred_alert_link(noticia):
+    """Return a single preferred link for Telegram rendering."""
+    return noticia.get('url_fuente_original') or noticia.get('url') or noticia.get('pdf')
 
 def obtener_bandera(pais):
     banderas = {
@@ -66,6 +81,7 @@ def ejecutar_flujo():
     try:
         df_historico = pd.read_csv(ARCHIVO_HISTORIAL)
         print(f"Historial cargado: {len(df_historico)} registros")
+        warn_csv_row_count(df_historico, "al cargar")
         
         # Normalizar historial si faltan columnas (migración al vuelo)
         if 'resumen' not in df_historico.columns:
@@ -78,6 +94,7 @@ def ejecutar_flujo():
     except FileNotFoundError:
         df_historico = pd.DataFrame(columns=["url", "titulo", "fecha", "pais", "institucion", "resumen"])
         print("Historial no encontrado, creando nuevo archivo...")
+        warn_csv_row_count(df_historico, "al crear")
 
     # 2. Recolectar noticias candidatas
     noticias_candidatas = []
@@ -150,19 +167,8 @@ def ejecutar_flujo():
             institucion_segura = html.escape(str(noticia['institucion']))
             
             # Logica inteligente de enlaces
-            link_web = noticia.get('url')
-            link_pdf = noticia.get('pdf')
-
-            texto_enlaces = ""
-            # Caso A: Ambos enlaces disponibles (prioridad a web)
-            if link_web and link_pdf:
-                texto_enlaces = f"🔗 {link_web}"
-            # Caso B: Solo Web
-            elif link_web:
-                texto_enlaces = f"🔗 {link_web}"
-            # Caso C: Solo PDF
-            elif link_pdf:
-                texto_enlaces = f"📥 {link_pdf}"
+            texto_enlace = select_preferred_alert_link(noticia)
+            texto_enlaces = f"🔗 {texto_enlace}" if texto_enlace else ""
 
             bandera = obtener_bandera(noticia['pais'])
             mensaje = (
@@ -193,6 +199,7 @@ def ejecutar_flujo():
             
         df_actualizado.to_csv(ARCHIVO_HISTORIAL, index=False)
         print(f"Historial actualizado: {len(df_actualizado)} registros")
+        warn_csv_row_count(df_actualizado, "al guardar")
     else:
         print("No se encontraron novedades")
 

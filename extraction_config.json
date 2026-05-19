@@ -49,5 +49,19 @@
   "Perú": {
     "content_type": "pdf",
     "note": "Use PDF link from scraper, not HTML"
+  },
+  "drugoffice_other_safety_alerts": {
+    "content_type": "html",
+    "selectors": [
+      "th",
+      "#newsContent"
+    ],
+    "remove_selectors": [
+      "script",
+      "style",
+      "nav",
+      "footer"
+    ],
+    "note": "Hong Kong Drug Office Other safety alerts detail pages; direct PDFs still use the PDF path"
   }
 }
